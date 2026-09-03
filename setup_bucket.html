@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>One-time setup</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 24px; background:#fff5f8; color:#5c3a44; }
+  h1 { font-size: 20px; }
+  #result { margin-top: 20px; padding: 16px; background:#fffafc; border:2px solid #ffc2d9; border-radius:12px; font-size: 15px; word-break: break-all; }
+  .id { font-weight: bold; font-size: 18px; color: #e0558a; user-select: all; }
+</style>
+</head>
+<body>
+<h1>🌸 One-time setup — creating your shared storage space...</h1>
+<div id="result">Working, please wait a few seconds...</div>
+
+<script>
+async function createBlob() {
+  try {
+    const res = await fetch('https://jsonblob.com/api/jsonBlob', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({})
+    });
+    const location = res.headers.get('Location');
+    if (location) {
+      const blobId = location.split('/').pop();
+      document.getElementById('result').innerHTML =
+        `✅ Success! Your storage ID is:<br><br><span class="id">${blobId}</span><br><br>Copy this and send it back in the chat.`;
+    } else {
+      const text = await res.text();
+      document.getElementById('result').innerHTML = `⚠️ No Location header returned. Status: ${res.status}<br>${text}`;
+    }
+  } catch (e) {
+    document.getElementById('result').innerHTML = `❌ Error: ${e.message}. Try opening this page in a normal mobile/desktop browser with internet on.`;
+  }
+}
+createBlob();
+</script>
+</body>
+</html>
