@@ -315,15 +315,29 @@ async function setPicks(picks) {
 }
 
 async function selectImage(item) {
+  // check the pair isn't already full before doing anything
+  const checkPicks = await getPicks();
+  const occupants = Object.keys(checkPicks).filter(n => checkPicks[n] === item.id && n !== myName);
+  if (occupants.length >= 2) {
+    alert(`⚠️ ${item.label} 已经有两个人了！请选另一张图片。\nThis pair is already full — please choose a different image.`);
+    return;
+  }
+
   myPick = item;
   celebrationShown = false;
+  let success = false;
   for (let attempt = 0; attempt < 3; attempt++) {
     const picks = await getPicks();
+    const others = Object.keys(picks).filter(n => picks[n] === item.id && n !== myName);
+    if (others.length >= 2) {
+      alert(`⚠️ ${item.label} 已经有两个人了！请选另一张图片。\nThis pair just filled up — please choose a different image.`);
+      return;
+    }
     picks[myName] = item.id;
     await setPicks(picks);
     await new Promise(r => setTimeout(r, 250 + Math.random() * 300));
     const verify = await getPicks();
-    if (verify[myName] === item.id) break;
+    if (verify[myName] === item.id) { success = true; break; }
   }
   showResult();
 }
