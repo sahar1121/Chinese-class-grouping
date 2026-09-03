@@ -291,15 +291,14 @@ function renderGrid() {
   });
 }
 
-const KVDB_BUCKET = "chineseclass2026grp";
-const KVDB_URL = `https://kvdb.io/${KVDB_BUCKET}/picks`;
+const FIREBASE_URL = "https://chinese-class-5ed66-default-rtdb.firebaseio.com/picks.json";
 
 async function getPicks() {
   try {
-    const res = await fetch(KVDB_URL, { cache: "no-store" });
+    const res = await fetch(FIREBASE_URL, { cache: "no-store" });
     if (res.ok) {
-      const text = await res.text();
-      return text ? JSON.parse(text) : {};
+      const data = await res.json();
+      return data || {};
     }
   } catch (e) { console.error("getPicks error", e); }
   return {};
@@ -307,7 +306,7 @@ async function getPicks() {
 
 async function setPicks(picks) {
   try {
-    await fetch(KVDB_URL, {
+    await fetch(FIREBASE_URL, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(picks)
@@ -318,9 +317,14 @@ async function setPicks(picks) {
 async function selectImage(item) {
   myPick = item;
   celebrationShown = false;
-  const picks = await getPicks();
-  picks[myName] = item.id;
-  await setPicks(picks);
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const picks = await getPicks();
+    picks[myName] = item.id;
+    await setPicks(picks);
+    await new Promise(r => setTimeout(r, 250 + Math.random() * 300));
+    const verify = await getPicks();
+    if (verify[myName] === item.id) break;
+  }
   showResult();
 }
 
