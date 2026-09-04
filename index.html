@@ -200,6 +200,7 @@
     <div class="waiting" id="statusMsg">Waiting for group members to join...</div>
     <div id="teamBanner" class="team-banner hidden"></div>
     <div class="group-list" id="groupList"></div>
+    <button class="small-btn" onclick="refreshGroup()" style="margin-top:10px;">🔄 刷新 Refresh now</button>
   </div>
   <button class="seal-btn" onclick="goToPairChallenge()">💕 配对挑战 Pair Challenge →</button>
   <button class="small-btn" onclick="changePick()">Change my selection</button>
@@ -309,25 +310,31 @@ function renderGrid() {
 
 const NPOINT_URL = "https://api.npoint.io/a2c68abcae2dbb075773";
 
+function fetchWithTimeout(url, options = {}, timeoutMs = 6000) {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
+}
+
 async function getPicks() {
   try {
-    const res = await fetch(NPOINT_URL, { cache: "no-store" });
+    const res = await fetchWithTimeout(NPOINT_URL, { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
       return (data && data.picks) ? data.picks : {};
     }
-  } catch (e) { console.error("getPicks error", e); }
+  } catch (e) { console.error("getPicks error", e); throw e; }
   return {};
 }
 
 async function setPicks(picks) {
   try {
-    await fetch(NPOINT_URL, {
+    await fetchWithTimeout(NPOINT_URL, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ picks: picks })
     });
-  } catch (e) { console.error("setPicks error", e); }
+  } catch (e) { console.error("setPicks error", e); throw e; }
 }
 
 function selectImage(item) {
@@ -339,19 +346,27 @@ function selectImage(item) {
   saveInBackground(item);
 }
 
-async function saveInBackground(item) {
+async function saveInBackground(item, attempt = 1) {
   try {
     const picks = await getPicks();
     const others = Object.keys(picks).filter(n => picks[n] === item.id && n !== myName);
     if (others.length >= 2 && !(myName in picks && picks[myName] === item.id)) {
-      // pair filled while we were picking - let them know, but don't block their flow
       document.getElementById('statusMsg').textContent =
         `⚠️ ${item.label} 已经有两个人了 - this pair filled up, you may want to change your selection.`;
       return;
     }
     picks[myName] = item.id;
     await setPicks(picks);
-  } catch (e) { console.error("background save failed", e); }
+    refreshGroup();
+  } catch (e) {
+    console.error("background save failed", e);
+    if (attempt < 3) {
+      setTimeout(() => saveInBackground(item, attempt + 1), 1500);
+    } else {
+      document.getElementById('statusMsg').textContent =
+        '⚠️ Having trouble saving — tap Refresh to retry.';
+    }
+  }
 }
 
 function showResult() {
@@ -367,6 +382,7 @@ function showResult() {
 }
 
 async function refreshGroup() {
+  document.getElementById('statusMsg').textContent = '🔄 Checking...';
   try {
     const picks = await getPicks();
     const members = Object.keys(picks).filter(n => picks[n] === myPick.id);
@@ -394,6 +410,7 @@ async function refreshGroup() {
     }
   } catch (e) {
     console.error(e);
+    document.getElementById('statusMsg').textContent = '⚠️ Could not check right now — tap Refresh to try again.';
   }
 }
 
