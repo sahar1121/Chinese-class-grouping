@@ -16,26 +16,27 @@
 <div id="result">Working, please wait a few seconds...</div>
 
 <script>
-async function createBin() {
+async function createBlob() {
   try {
-    const res = await fetch('https://api.extendsclass.com/json-storage/bin', {
+    const res = await fetch('https://jsonblob.com/api/jsonBlob', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ picks: {} })
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({})
     });
-    const data = await res.json();
-    if (data && data.uri) {
-      const binId = data.uri.split('/').pop();
+    const location = res.headers.get('Location');
+    if (location) {
+      const blobId = location.split('/').pop();
       document.getElementById('result').innerHTML =
-        `✅ Success! Your storage ID is:<br><br><span class="id">${binId}</span><br><br>Copy this and send it back in the chat.`;
+        `✅ Success! Your storage ID is:<br><br><span class="id">${blobId}</span><br><br>Copy this and send it back in the chat.`;
     } else {
-      document.getElementById('result').innerHTML = `⚠️ Unexpected response: ${JSON.stringify(data)}`;
+      const text = await res.text();
+      document.getElementById('result').innerHTML = `⚠️ No Location header. Status: ${res.status}<br>${text}`;
     }
   } catch (e) {
     document.getElementById('result').innerHTML = `❌ Error: ${e.message}`;
   }
 }
-createBin();
+createBlob();
 </script>
 </body>
 </html>
