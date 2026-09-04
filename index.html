@@ -159,9 +159,25 @@
     0% { transform: translate(0,0) scale(0.6); opacity: 1; }
     100% { transform: translate(var(--dx), -60vh) scale(1.2); opacity: 0; }
   }
+
+  .loading-overlay {
+    position: fixed; inset: 0; background: rgba(255,245,248,0.85);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 2000; font-size: 18px; color: #e0558a; font-weight: bold;
+    text-align: center; padding: 20px;
+  }
+  .loading-overlay.hidden { display: none; }
+  .spinner {
+    width: 36px; height: 36px; border: 4px solid #ffc2d9;
+    border-top-color: #ff6b9d; border-radius: 50%;
+    animation: spin 0.8s linear infinite; margin: 0 auto 12px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
+
+<div class="loading-overlay hidden" id="loadingOverlay"><div><div class="spinner"></div>Saving your pick...</div></div>
 
 <div class="screen" id="nameScreen">
   <h1>🌸 家人主题 · 分组</h1>
@@ -314,32 +330,28 @@ async function setPicks(picks) {
   } catch (e) { console.error("setPicks error", e); }
 }
 
-async function selectImage(item) {
-  // check the pair isn't already full before doing anything
-  const checkPicks = await getPicks();
-  const occupants = Object.keys(checkPicks).filter(n => checkPicks[n] === item.id && n !== myName);
-  if (occupants.length >= 2) {
-    alert(`⚠️ ${item.label} 已经有两个人了！请选另一张图片。\nThis pair is already full — please choose a different image.`);
-    return;
-  }
-
+function selectImage(item) {
   myPick = item;
   celebrationShown = false;
-  let success = false;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  // show result INSTANTLY - never block the tap on the network
+  showResult();
+  // save + pair-limit check happen quietly in the background
+  saveInBackground(item);
+}
+
+async function saveInBackground(item) {
+  try {
     const picks = await getPicks();
     const others = Object.keys(picks).filter(n => picks[n] === item.id && n !== myName);
-    if (others.length >= 2) {
-      alert(`⚠️ ${item.label} 已经有两个人了！请选另一张图片。\nThis pair just filled up — please choose a different image.`);
+    if (others.length >= 2 && !(myName in picks && picks[myName] === item.id)) {
+      // pair filled while we were picking - let them know, but don't block their flow
+      document.getElementById('statusMsg').textContent =
+        `⚠️ ${item.label} 已经有两个人了 - this pair filled up, you may want to change your selection.`;
       return;
     }
     picks[myName] = item.id;
     await setPicks(picks);
-    await new Promise(r => setTimeout(r, 250 + Math.random() * 300));
-    const verify = await getPicks();
-    if (verify[myName] === item.id) { success = true; break; }
-  }
-  showResult();
+  } catch (e) { console.error("background save failed", e); }
 }
 
 function showResult() {
@@ -351,7 +363,7 @@ function showResult() {
   document.getElementById('resultLabel').textContent = myPick.label;
   refreshGroup();
   if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(refreshGroup, 3000);
+  pollTimer = setInterval(refreshGroup, 5000);
 }
 
 async function refreshGroup() {
