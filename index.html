@@ -130,8 +130,8 @@
 
   .team-banner {
     background: linear-gradient(135deg, #ff8fb3, #ff6b9d);
-    color: #fff; font-weight: bold; font-size: 15px;
-    padding: 10px 14px; border-radius: 14px; margin: 10px 0;
+    color: #fff; font-weight: bold; font-size: 20px;
+    padding: 14px 16px; border-radius: 16px; margin: 10px 0;
     box-shadow: 0 3px 0 #d94879;
   }
   .team-banner.celebrate { animation: bannerPop 0.6s ease; }
@@ -259,26 +259,38 @@ const ITEM_MAP = {};
 ITEMS.forEach(it => ITEM_MAP[it.id] = it);
 
 const TEAM_NAMES = {
-  "baba": "大树队 Team Big Tree 🌳",
-  "mama": "太阳队 Team Sunshine ☀️",
-  "gege": "老虎队 Team Tiger 🐯",
-  "jiejie": "凤凰队 Team Phoenix 🔥",
-  "jiujiu": "飞龙队 Team Flying Dragon 🐉",
-  "ayi": "玫瑰队 Team Rose 🌹",
-  "gugu": "兰花队 Team Orchid 🌿",
-  "shushu": "竹子队 Team Bamboo 🎋",
-  "cha": "茉莉队 Team Jasmine 🍵",
-  "hua": "樱花队 Team Cherry Blossom 🌸",
-  "mao": "幸运猫队 Team Lucky Cat 🐱",
-  "shu": "智慧队 Team Wisdom 📖",
-  "tingge": "旋律队 Team Melody 🎵",
-  "dianshi": "星光队 Team Starlight ⭐"
+  "baba": "Team Big Tree 🌳",
+  "mama": "Team Sunshine ☀️",
+  "gege": "Team Tiger 🐯",
+  "jiejie": "Team Phoenix 🔥",
+  "jiujiu": "Team Flying Dragon 🐉",
+  "ayi": "Team Rose 🌹",
+  "gugu": "Team Orchid 🌿",
+  "shushu": "Team Bamboo 🎋",
+  "cha": "Team Jasmine 🍵",
+  "hua": "Team Cherry Blossom 🌸",
+  "mao": "Team Lucky Cat 🐱",
+  "shu": "Team Wisdom 📖",
+  "tingge": "Team Melody 🎵",
+  "dianshi": "Team Starlight ⭐"
 };
 let celebrationShown = false;
 
 let myName = "";
 let myPick = null;
 let pollTimer = null;
+
+// Restore a previous pick from this device, if any - locks them to one selection
+window.addEventListener('DOMContentLoaded', () => {
+  const savedName = localStorage.getItem('cc_myName');
+  const savedPickId = localStorage.getItem('cc_myPickId');
+  if (savedName && savedPickId && ITEM_MAP[savedPickId]) {
+    myName = savedName;
+    myPick = ITEM_MAP[savedPickId];
+    document.getElementById('nameScreen').classList.add('hidden');
+    showResult();
+  }
+});
 
 let pairFamily = null;
 let pairActivity = null;
@@ -340,6 +352,8 @@ async function setPicks(picks) {
 function selectImage(item) {
   myPick = item;
   celebrationShown = false;
+  localStorage.setItem('cc_myName', myName);
+  localStorage.setItem('cc_myPickId', item.id);
   // show result INSTANTLY - never block the tap on the network
   showResult();
   // save + pair-limit check happen quietly in the background
@@ -396,7 +410,7 @@ async function refreshGroup() {
     const banner = document.getElementById('teamBanner');
     if (members.length >= 2) {
       const teamName = TEAM_NAMES[myPick.id] || myPick.label;
-      banner.textContent = `🎉 欢迎加入 ${teamName}！`;
+      banner.textContent = `🎉 Welcome to ${teamName}!`;
       banner.classList.remove('hidden');
       if (!celebrationShown) {
         celebrationShown = true;
@@ -431,8 +445,17 @@ function burstConfetti() {
   setTimeout(() => container.remove(), 2200);
 }
 
-function changePick() {
+async function changePick() {
   if (pollTimer) clearInterval(pollTimer);
+  // remove the OLD entry from the shared list before letting them pick again
+  try {
+    const picks = await getPicks();
+    delete picks[myName];
+    await setPicks(picks);
+  } catch (e) { console.error("failed to clear old pick", e); }
+  localStorage.removeItem('cc_myName');
+  localStorage.removeItem('cc_myPickId');
+  myPick = null;
   document.getElementById('resultScreen').classList.add('hidden');
   document.getElementById('pickScreen').classList.remove('hidden');
 }
