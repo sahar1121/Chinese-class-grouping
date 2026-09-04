@@ -291,14 +291,14 @@ function renderGrid() {
   });
 }
 
-const FIREBASE_URL = "https://chinese-class-5ed66-default-rtdb.firebaseio.com/picks.json";
+const NPOINT_URL = "https://api.npoint.io/a2c68abcae2dbb075773";
 
 async function getPicks() {
   try {
-    const res = await fetch(FIREBASE_URL, { cache: "no-store" });
+    const res = await fetch(NPOINT_URL, { cache: "no-store" });
     if (res.ok) {
       const data = await res.json();
-      return data || {};
+      return (data && data.picks) ? data.picks : {};
     }
   } catch (e) { console.error("getPicks error", e); }
   return {};
@@ -306,10 +306,10 @@ async function getPicks() {
 
 async function setPicks(picks) {
   try {
-    await fetch(FIREBASE_URL, {
-      method: "PUT",
+    await fetch(NPOINT_URL, {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(picks)
+      body: JSON.stringify({ picks: picks })
     });
   } catch (e) { console.error("setPicks error", e); }
 }
