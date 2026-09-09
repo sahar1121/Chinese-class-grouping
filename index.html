@@ -109,6 +109,55 @@
     border-bottom: 1px dashed #ffd3e2; font-size: 14px; cursor: pointer;
   }
   .leaderboard .row.me { font-weight: bold; color: #e0558a; }
+
+  /* Timeline map */
+  .timeline-wrap { position: relative; height: 70px; margin: 10px 0 6px; }
+  .timeline-track { position:absolute; top: 34px; left: 6%; right: 6%; height: 4px; background: #ffd3e2; border-radius: 2px; }
+  .timeline-track-fill { position:absolute; top: 34px; left: 6%; height: 4px; background: #ff6b9d; border-radius: 2px; transition: width 0.6s ease; }
+  .timeline-node {
+    position:absolute; top: 22px; width: 28px; height: 28px; border-radius: 50%;
+    background: #ffd3e2; display:flex; align-items:center; justify-content:center;
+    font-size: 15px; transform: translateX(-50%); transition: background 0.4s;
+  }
+  .timeline-node.done { background: #4caf50; }
+  .timeline-walker {
+    position:absolute; top: -8px; font-size: 26px; transform: translateX(-50%);
+    transition: left 0.6s ease; z-index: 5;
+  }
+
+  /* Sky animation */
+  .sky-icon { position:absolute; font-size: 30px; transition: left 0.6s ease, top 0.6s ease; z-index: 1; }
+  .stop-card { position: relative; overflow: hidden; }
+
+  /* Mascot */
+  .mascot { font-size: 44px; transition: transform 0.3s; }
+  .mascot.happy { animation: bounce 0.5s ease; }
+  .mascot.sad { animation: shake 0.4s ease; }
+  @keyframes bounce { 0%,100%{transform:translateY(0);} 40%{transform:translateY(-14px);} }
+  @keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-6px);} 75%{transform:translateX(6px);} }
+
+  /* Sticker tray */
+  .sticker-tray { text-align:center; font-size: 22px; margin-bottom: 6px; min-height: 26px; letter-spacing: 4px; }
+
+  /* Fun fact reveal */
+  .fact-overlay {
+    position: fixed; inset: 0; background: rgba(90,50,70,0.55);
+    display:flex; align-items:center; justify-content:center; z-index: 3000; padding: 20px;
+  }
+  .fact-card {
+    background: #fffafc; border-radius: 22px; padding: 24px; max-width: 380px; text-align:center;
+    box-shadow: 0 8px 0 #ffc2d9;
+  }
+  .fact-sticker { font-size: 50px; margin-bottom: 8px; }
+  .fact-cn { font-size: 17px; font-weight: bold; color: #e0558a; margin-bottom: 6px; }
+  .fact-en { font-size: 13px; color: #a06377; }
+
+  /* Speed round */
+  .speed-timer { font-size: 32px; font-weight: bold; color: #a13327; text-align:center; margin-bottom: 6px; }
+  .speed-score { text-align:center; font-size: 15px; color: #a06377; margin-bottom: 6px; }
+
+  /* Certificate */
+  #certCanvas { max-width: 100%; border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.15); margin: 10px 0; }
 </style>
 </head>
 <body id="bodyEl">
@@ -129,11 +178,13 @@
 
 <div class="screen hidden" id="adventureScreen">
   <h1 id="stopHeader">🕰️ 时间大冒险</h1>
-  <div class="progress-dots" id="progressDots"></div>
+  <div class="timeline-wrap" id="timelineWrap"></div>
+  <div class="sticker-tray" id="stickerTray"></div>
   <div class="sub" id="streakLine"></div>
 
   <div class="card stop-card" id="stopCard">
-    <div class="stop-emoji" id="stopEmoji"></div>
+    <div class="sky-icon" id="skyIcon"></div>
+    <div class="mascot" id="mascotEl">🐼</div>
     <div class="stop-title" id="stopTitle"></div>
     <div class="stop-scene" id="stopScene"></div>
     <div class="target-time" id="targetTime"></div>
@@ -148,11 +199,45 @@
   </div>
 </div>
 
+<div class="screen hidden" id="factScreen">
+  <div class="fact-overlay">
+    <div class="fact-card">
+      <div class="fact-sticker" id="factSticker"></div>
+      <div class="fact-cn" id="factCn"></div>
+      <div class="fact-en" id="factEn"></div>
+      <button class="seal-btn" onclick="continueAfterFact()" style="margin-top:14px;">继续 Continue →</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen hidden" id="speedIntroScreen">
+  <h1>⚡ 奖励回合 Bonus Speed Round</h1>
+  <div class="card">
+    <div class="sub">60 seconds. Set as many clocks correctly as you can for bonus points!</div>
+    <button class="seal-btn" onclick="startSpeedRound()">🚀 开始 Start Speed Round</button>
+    <button class="small-btn" onclick="skipSpeedRound()">跳过 Skip this</button>
+  </div>
+</div>
+
+<div class="screen hidden" id="speedScreen">
+  <h1>⚡ 奖励回合</h1>
+  <div class="speed-timer" id="speedTimer">60</div>
+  <div class="speed-score" id="speedScoreLine">Correct: 0</div>
+  <div class="card stop-card" style="background:linear-gradient(135deg,#ffe082,#ff8a65);">
+    <div class="target-time" id="speedTargetTime"></div>
+    <div class="target-py" id="speedTargetPy"></div>
+    <div class="clock-wrap"><svg class="clock-svg" id="speedClockSvg" viewBox="0 0 200 200"></svg></div>
+    <button class="seal-btn" onclick="checkSpeedClock()">✅ 检查 Check</button>
+  </div>
+</div>
+
 <div class="screen hidden" id="scoreScreen">
   <div class="card medal-card" id="medalCard">
     <div class="medal-emoji" id="medalEmoji"></div>
     <div class="medal-title" id="medalTitle"></div>
     <div class="medal-sub" id="medalSub"></div>
+    <canvas id="certCanvas" width="600" height="380"></canvas>
+    <button class="small-btn" onclick="downloadCertificate()">📜 下载证书 Download Certificate</button>
   </div>
   <div class="card">
     <div class="sub">🏆 Class Leaderboard</div>
@@ -164,7 +249,7 @@
 
 <script>
 const NUMBERS = [{"num": 1, "cn": "一", "pinyin": "yī", "fa": "یک", "en": "one"}, {"num": 2, "cn": "二", "pinyin": "èr", "fa": "دو", "en": "two"}, {"num": 3, "cn": "三", "pinyin": "sān", "fa": "سه", "en": "three"}, {"num": 4, "cn": "四", "pinyin": "sì", "fa": "چهار", "en": "four"}, {"num": 5, "cn": "五", "pinyin": "wǔ", "fa": "پنج", "en": "five"}, {"num": 6, "cn": "六", "pinyin": "liù", "fa": "شش", "en": "six"}, {"num": 7, "cn": "七", "pinyin": "qī", "fa": "هفت", "en": "seven"}, {"num": 8, "cn": "八", "pinyin": "bā", "fa": "هشت", "en": "eight"}, {"num": 9, "cn": "九", "pinyin": "jiǔ", "fa": "نه", "en": "nine"}, {"num": 10, "cn": "十", "pinyin": "shí", "fa": "ده", "en": "ten"}, {"num": 11, "cn": "十一", "pinyin": "shí yī", "fa": "یازده", "en": "eleven"}, {"num": 12, "cn": "十二", "pinyin": "shí èr", "fa": "دوازده", "en": "twelve"}];
-const STOPS = [{"id": "morning", "emoji": "🌅", "title_cn": "早上", "title_py": "zǎoshang", "title_fa": "صبح", "title_en": "Morning", "scene": "🍳🥛 早饭时间 Breakfast time", "bg": "linear-gradient(135deg,#ffe0b2,#ffab91)", "hour": 7, "minute": 30, "cn": "七点半", "pinyin_suffix": "diǎn bàn", "fa_phrase": "ساعت هفت و نیم"}, {"id": "noon", "emoji": "☀️", "title_cn": "中午", "title_py": "zhōngwǔ", "title_fa": "ظهر", "title_en": "Noon", "scene": "🍜🥢 午饭时间 Lunch time", "bg": "linear-gradient(135deg,#fff59d,#4fc3f7)", "hour": 12, "minute": 0, "cn": "十二点整", "pinyin_suffix": "diǎn zhěng", "fa_phrase": "ساعت دوازده"}, {"id": "afternoon", "emoji": "📚", "title_cn": "下午", "title_py": "xiàwǔ", "title_fa": "بعدازظهر", "title_en": "Afternoon", "scene": "🎒✏️ 上学时间 School time", "bg": "linear-gradient(135deg,#ffcc80,#ff8a65)", "hour": 3, "minute": 15, "cn": "三点十五分", "pinyin_suffix": "diǎn fēn", "fa_phrase": "ساعت سه و پانزده دقیقه"}, {"id": "evening", "emoji": "🌙", "title_cn": "晚上", "title_py": "wǎnshang", "title_fa": "شب", "title_en": "Evening", "scene": "🍽️🌟 晚饭时间 Dinner time", "bg": "linear-gradient(135deg,#7986cb,#4a148c)", "hour": 8, "minute": 45, "cn": "八点四十五分", "pinyin_suffix": "diǎn fēn", "fa_phrase": "ساعت هشت و چهل و پنج دقیقه"}];
+const STOPS = [{"id": "morning", "emoji": "🌅", "title_cn": "早上", "title_py": "zǎoshang", "title_fa": "صبح", "title_en": "Morning", "scene": "🍳🥛 早饭时间 Breakfast time", "bg": "linear-gradient(135deg,#ffe0b2,#ffab91)", "hour": 7, "minute": 30, "cn": "七点半", "pinyin_suffix": "diǎn bàn", "fa_phrase": "ساعت هفت و نیم", "fact_cn": "在中国，很多人早上喝豆浆、吃包子。", "fact_en": "In China, many people drink soy milk and eat steamed buns for breakfast.", "sticker": "🥟", "full_sentence": "现在是七点半"}, {"id": "noon", "emoji": "☀️", "title_cn": "中午", "title_py": "zhōngwǔ", "title_fa": "ظهر", "title_en": "Noon", "scene": "🍜🥢 午饭时间 Lunch time", "bg": "linear-gradient(135deg,#fff59d,#4fc3f7)", "hour": 12, "minute": 0, "cn": "十二点整", "pinyin_suffix": "diǎn zhěng", "fa_phrase": "ساعت دوازده", "fact_cn": "中国小学生中午通常有午休时间。", "fact_en": "Chinese elementary students usually have a nap time at noon.", "sticker": "🍚", "full_sentence": "现在是十二点整"}, {"id": "afternoon", "emoji": "📚", "title_cn": "下午", "title_py": "xiàwǔ", "title_fa": "بعدازظهر", "title_en": "Afternoon", "scene": "🎒✏️ 上学时间 School time", "bg": "linear-gradient(135deg,#ffcc80,#ff8a65)", "hour": 3, "minute": 15, "cn": "三点十五分", "pinyin_suffix": "diǎn fēn", "fa_phrase": "ساعت سه و پانزده دقیقه", "fact_cn": "下午三四点，很多孩子放学了。", "fact_en": "Around 3-4pm, many kids finish school for the day.", "sticker": "🎒", "full_sentence": "现在是三点十五分"}, {"id": "evening", "emoji": "🌙", "title_cn": "晚上", "title_py": "wǎnshang", "title_fa": "شب", "title_en": "Evening", "scene": "🍽️🌟 晚饭时间 Dinner time", "bg": "linear-gradient(135deg,#7986cb,#4a148c)", "hour": 8, "minute": 45, "cn": "八点四十五分", "pinyin_suffix": "diǎn fēn", "fa_phrase": "ساعت هشت و چهل و پنج دقیقه", "fact_cn": "晚上，一家人常常一起吃晚饭。", "fact_en": "In the evening, families often eat dinner together.", "sticker": "🍜", "full_sentence": "现在是八点四十五分"}];
 const NPOINT_URL = "https://api.npoint.io/a2c68abcae2dbb075773";
 
 let myName = "";
@@ -176,6 +261,15 @@ let handAngleHour = 0;
 let handAngleMinute = 0;
 let draggingHand = null;
 let myAnswers = [];
+let collectedStickers = [];
+let pendingCorrect = false;
+
+const SKY_ICONS = {
+  morning: { icon: "🌤️", left: "15%", top: "10px" },
+  noon: { icon: "☀️", left: "50%", top: "0px" },
+  afternoon: { icon: "🌇", left: "80%", top: "20px" },
+  evening: { icon: "🌙✨", left: "70%", top: "10px" }
+};
 
 function fetchWithTimeout(url, options = {}, timeoutMs = 6000) {
   const controller = new AbortController();
@@ -253,23 +347,42 @@ function startAdventure() {
   renderStop();
 }
 
-function renderDots() {
-  const el = document.getElementById('progressDots');
-  el.innerHTML = STOPS.map((s,i) => {
-    let cls = 'dot';
-    if (i < currentStop) cls += ' done';
-    else if (i === currentStop) cls += ' active';
-    return `<div class="${cls}"></div>`;
-  }).join('');
+function renderTimeline() {
+  const wrap = document.getElementById('timelineWrap');
+  const n = STOPS.length;
+  const positions = STOPS.map((_,i) => 6 + (88 * i / (n-1))); // percent positions
+  const walkerPos = positions[Math.min(currentStop, n-1)];
+  const fillPct = (currentStop / (n-1)) * 88;
+
+  wrap.innerHTML = `
+    <div class="timeline-track"></div>
+    <div class="timeline-track-fill" style="width:${fillPct}%"></div>
+    ${STOPS.map((s,i) => `<div class="timeline-node ${i < currentStop ? 'done' : ''}" style="left:${positions[i]}%;">${s.emoji}</div>`).join('')}
+    <div class="timeline-walker" style="left:${walkerPos}%;">🧒</div>
+  `;
+}
+
+function renderStickerTray() {
+  document.getElementById('stickerTray').textContent = collectedStickers.join(' ');
 }
 
 function renderStop() {
   const s = STOPS[currentStop];
   document.getElementById('bodyEl').style.background = s.bg;
   document.getElementById('stopHeader').textContent = `${s.emoji} ${s.title_cn} ${s.title_en}`;
-  renderDots();
+  renderTimeline();
+  renderStickerTray();
   document.getElementById('streakLine').textContent = streak > 1 ? `🔥 Streak: ${streak}` : '';
-  document.getElementById('stopEmoji').textContent = s.emoji;
+
+  const sky = SKY_ICONS[s.id];
+  const skyEl = document.getElementById('skyIcon');
+  skyEl.textContent = sky.icon;
+  skyEl.style.left = sky.left;
+  skyEl.style.top = sky.top;
+
+  document.getElementById('mascotEl').textContent = '🐼';
+  document.getElementById('mascotEl').className = 'mascot';
+
   document.getElementById('stopTitle').textContent = `${s.title_cn} (${s.title_py}) · ${s.title_fa}`;
   document.getElementById('stopScene').textContent = s.scene;
   document.getElementById('targetTime').textContent = s.cn;
@@ -278,7 +391,6 @@ function renderStop() {
   document.getElementById('feedbackFlash').textContent = '';
   document.getElementById('feedbackFlash').className = 'feedback-flash';
 
-  // start the draggable clock at a random position (not the answer)
   handAngleHour = Math.random() * 360;
   handAngleMinute = Math.random() * 360;
   drawDragClock();
@@ -286,7 +398,7 @@ function renderStop() {
 }
 
 function speakTarget() {
-  speak(STOPS[currentStop].cn);
+  speak(STOPS[currentStop].full_sentence);
 }
 
 function angleToHourMinute(hourAngle, minuteAngle) {
@@ -349,32 +461,145 @@ function checkClock() {
   const { h, m } = angleToHourMinute(handAngleHour, handAngleMinute);
   const isCorrect = (h === s.hour || h === (s.hour % 12)) && m === s.minute;
   const flash = document.getElementById('feedbackFlash');
+  const mascot = document.getElementById('mascotEl');
   myAnswers.push({ stop: s.title_en, target: `${s.hour}:${String(s.minute).padStart(2,'0')}`, given: `${h}:${String(m).padStart(2,'0')}`, isCorrect });
 
   if (isCorrect) {
     streak++; bestStreak = Math.max(bestStreak, streak); correctCount++;
     flash.textContent = '✅ 对了! Correct!';
     flash.className = 'feedback-flash correct';
+    mascot.textContent = '🐼🎉';
+    mascot.className = 'mascot happy';
     playCorrectSound();
+    if (!collectedStickers.includes(s.sticker)) collectedStickers.push(s.sticker);
   } else {
     streak = 0;
     flash.textContent = `❌ 再试一次! It was ${s.hour}:${String(s.minute).padStart(2,'0')}`;
     flash.className = 'feedback-flash wrong';
+    mascot.textContent = '🐼💧';
+    mascot.className = 'mascot sad';
     playWrongSound();
   }
+  renderStickerTray();
 
-  setTimeout(() => {
-    currentStop++;
-    if (currentStop < STOPS.length) {
-      renderStop();
-    } else {
+  setTimeout(() => { showFact(s); }, 1200);
+}
+
+function showFact(s) {
+  document.getElementById('adventureScreen').classList.add('hidden');
+  document.getElementById('factScreen').classList.remove('hidden');
+  document.getElementById('factSticker').textContent = s.sticker;
+  document.getElementById('factCn').textContent = s.fact_cn;
+  document.getElementById('factEn').textContent = s.fact_en;
+}
+
+function continueAfterFact() {
+  document.getElementById('factScreen').classList.add('hidden');
+  currentStop++;
+  if (currentStop < STOPS.length) {
+    document.getElementById('adventureScreen').classList.remove('hidden');
+    renderStop();
+  } else {
+    document.getElementById('speedIntroScreen').classList.remove('hidden');
+  }
+}
+
+let speedBonus = 0;
+
+function skipSpeedRound() {
+  document.getElementById('speedIntroScreen').classList.add('hidden');
+  finishAdventure();
+}
+
+let speedTimeLeft = 60;
+let speedTimerInterval = null;
+let speedTargetH = 0, speedTargetM = 0;
+let speedHandAngleHour = 0, speedHandAngleMinute = 0;
+let speedDraggingHand = null;
+
+function startSpeedRound() {
+  document.getElementById('speedIntroScreen').classList.add('hidden');
+  document.getElementById('speedScreen').classList.remove('hidden');
+  speedTimeLeft = 60;
+  speedBonus = 0;
+  document.getElementById('speedTimer').textContent = speedTimeLeft;
+  document.getElementById('speedScoreLine').textContent = 'Correct: 0';
+  newSpeedTarget();
+  speedTimerInterval = setInterval(() => {
+    speedTimeLeft--;
+    document.getElementById('speedTimer').textContent = speedTimeLeft;
+    if (speedTimeLeft <= 0) {
+      clearInterval(speedTimerInterval);
+      document.getElementById('speedScreen').classList.add('hidden');
       finishAdventure();
     }
-  }, 1400);
+  }, 1000);
+}
+
+function newSpeedTarget() {
+  speedTargetH = Math.floor(Math.random()*12)+1;
+  speedTargetM = [0,5,10,15,20,25,30,35,40,45,50,55][Math.floor(Math.random()*12)];
+  document.getElementById('speedTargetTime').textContent = `${speedTargetH}:${String(speedTargetM).padStart(2,'0')}`;
+  document.getElementById('speedTargetPy').textContent = 'Set the clock!';
+  speedHandAngleHour = Math.random()*360;
+  speedHandAngleMinute = Math.random()*360;
+  drawSpeedClock();
+  setupSpeedDragHandlers();
+}
+
+function drawSpeedClock() {
+  const svg = document.getElementById('speedClockSvg');
+  const hx = 100 + 45*Math.sin(speedHandAngleHour*Math.PI/180);
+  const hy = 100 - 45*Math.cos(speedHandAngleHour*Math.PI/180);
+  const mx = 100 + 75*Math.sin(speedHandAngleMinute*Math.PI/180);
+  const my = 100 - 75*Math.cos(speedHandAngleMinute*Math.PI/180);
+  svg.innerHTML = `
+    <circle cx="100" cy="100" r="95" fill="#fffafc" stroke="#ff8fb3" stroke-width="6"/>
+    ${[...Array(12)].map((_,i) => {
+      const a = i*30 * Math.PI/180;
+      const x1 = 100 + 80*Math.sin(a), y1 = 100 - 80*Math.cos(a);
+      const x2 = 100 + 88*Math.sin(a), y2 = 100 - 88*Math.cos(a);
+      return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#e0558a" stroke-width="3"/>`;
+    }).join('')}
+    <line class="hand" data-hand="hour" x1="100" y1="100" x2="${hx}" y2="${hy}" stroke="#5c3a44" stroke-width="7" stroke-linecap="round"/>
+    <line class="hand" data-hand="minute" x1="100" y1="100" x2="${mx}" y2="${my}" stroke="#ff6b9d" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="100" cy="100" r="6" fill="#e0558a"/>
+  `;
+}
+
+function setupSpeedDragHandlers() {
+  const svg = document.getElementById('speedClockSvg');
+  svg.onpointerdown = (e) => {
+    const target = e.target.closest('[data-hand]');
+    if (!target) return;
+    speedDraggingHand = target.getAttribute('data-hand');
+    svg.setPointerCapture(e.pointerId);
+  };
+  svg.onpointermove = (e) => {
+    if (!speedDraggingHand) return;
+    const rect = svg.getBoundingClientRect();
+    const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+    let angle = Math.atan2(e.clientX-cx, -(e.clientY-cy)) * 180/Math.PI;
+    if (angle < 0) angle += 360;
+    if (speedDraggingHand === 'hour') speedHandAngleHour = angle; else speedHandAngleMinute = angle;
+    drawSpeedClock(); setupSpeedDragHandlers();
+  };
+  svg.onpointerup = () => { speedDraggingHand = null; };
+  svg.onpointerleave = () => { speedDraggingHand = null; };
+}
+
+function checkSpeedClock() {
+  const { h, m } = angleToHourMinute(speedHandAngleHour, speedHandAngleMinute);
+  const isCorrect = (h === speedTargetH || h === (speedTargetH%12)) && m === speedTargetM;
+  if (isCorrect) { speedBonus++; playCorrectSound(); } else { playWrongSound(); }
+  document.getElementById('speedScoreLine').textContent = `Correct: ${speedBonus}`;
+  newSpeedTarget();
 }
 
 function finishAdventure() {
   document.getElementById('adventureScreen').classList.add('hidden');
+  document.getElementById('speedIntroScreen').classList.add('hidden');
+  document.getElementById('speedScreen').classList.add('hidden');
   document.getElementById('scoreScreen').classList.remove('hidden');
   document.getElementById('bodyEl').style.background = '';
 
@@ -388,10 +613,40 @@ function finishAdventure() {
 
   document.getElementById('medalEmoji').textContent = emoji;
   document.getElementById('medalTitle').textContent = title;
-  document.getElementById('medalSub').textContent = `${sub} Score: ${correctCount}/${total} · Best streak: ${bestStreak}`;
+  document.getElementById('medalSub').textContent = `${sub} Score: ${correctCount}/${total} · Best streak: ${bestStreak}` + (speedBonus>0 ? ` · Bonus: ${speedBonus}` : '');
 
-  saveResult(myName, correctCount, total, bestStreak, myAnswers);
+  drawCertificate(emoji, title, correctCount, total, bestStreak, speedBonus);
+  saveResult(myName, correctCount, total, bestStreak, myAnswers, speedBonus);
   refreshLeaderboard();
+}
+
+function drawCertificate(emoji, title, sc, total, streakVal, bonus) {
+  const canvas = document.getElementById('certCanvas');
+  const ctx = canvas.getContext('2d');
+  const grad = ctx.createLinearGradient(0,0,600,380);
+  grad.addColorStop(0,'#ffe0ec'); grad.addColorStop(1,'#ffb6d0');
+  ctx.fillStyle = grad; ctx.fillRect(0,0,600,380);
+  ctx.strokeStyle = '#e0558a'; ctx.lineWidth = 8; ctx.strokeRect(10,10,580,360);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#a13327'; ctx.font = 'bold 26px sans-serif';
+  ctx.fillText('时间大冒险 Certificate of Completion', 300, 60);
+  ctx.font = '60px sans-serif'; ctx.fillText(emoji, 300, 150);
+  ctx.fillStyle = '#5c3a44'; ctx.font = 'bold 30px sans-serif';
+  ctx.fillText(myName, 300, 200);
+  ctx.fillStyle = '#e0558a'; ctx.font = 'bold 22px sans-serif';
+  ctx.fillText(title, 300, 235);
+  ctx.fillStyle = '#5c3a44'; ctx.font = '18px sans-serif';
+  ctx.fillText(`Score: ${sc}/${total}  ·  Best Streak: ${streakVal}` + (bonus>0?`  ·  Bonus: ${bonus}`:''), 300, 270);
+  ctx.font = '14px sans-serif'; ctx.fillStyle = '#a06377';
+  ctx.fillText(new Date().toLocaleDateString(), 300, 340);
+}
+
+function downloadCertificate() {
+  const canvas = document.getElementById('certCanvas');
+  const link = document.createElement('a');
+  link.download = `${myName}_certificate.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
 }
 
 let lastResults = {};
