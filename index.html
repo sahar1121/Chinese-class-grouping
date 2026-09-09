@@ -158,6 +158,51 @@
 
   /* Certificate */
   #certCanvas { max-width: 100%; border-radius: 14px; box-shadow: 0 4px 14px rgba(0,0,0,0.15); margin: 10px 0; }
+
+  /* Role-play dialogue */
+  .dialogue-line { display:flex; align-items:flex-start; gap:10px; margin-bottom: 14px; text-align:left; }
+  .dialogue-avatar { font-size: 34px; flex-shrink:0; }
+  .dialogue-bubble { background:#fff0f5; border:2px solid #ffc2d9; border-radius: 14px; padding: 10px 14px; flex:1; }
+  .dialogue-cn { font-size: 17px; font-weight:bold; color:#e0558a; }
+  .dialogue-py { font-size: 12px; color:#a06377; font-style:italic; }
+
+  /* Voice recording */
+  .voice-row { display:flex; gap:8px; margin-top: 10px; }
+  .voice-row button { margin-bottom:0; }
+  .rec-btn { background:#e0558a; border-color:#e0558a; }
+  .rec-btn.recording { background:#a13327; border-color:#a13327; animation: pulse 1s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.6;} }
+
+  /* Boss round */
+  .boss-overlay { position:fixed; inset:0; background:linear-gradient(135deg,#2a0a3a,#5a1a5a); z-index:4000; display:flex; align-items:center; justify-content:center; padding:20px; }
+  .boss-card { background:#fffafc; border-radius:24px; padding:26px; max-width:400px; text-align:center; box-shadow:0 8px 0 #a13327; }
+  .boss-emoji { font-size: 70px; animation: bossFloat 2s ease-in-out infinite; }
+  @keyframes bossFloat { 0%,100%{transform:translateY(0);} 50%{transform:translateY(-10px);} }
+  .boss-timer { font-size: 30px; font-weight:bold; color:#a13327; margin: 8px 0; }
+  .boss-progress { display:flex; justify-content:center; gap:6px; margin-bottom:10px; }
+  .boss-dot { width:14px; height:14px; border-radius:50%; background:#ffd3e2; }
+  .boss-dot.done { background:#4caf50; }
+  .boss-dot.failed { background:#a13327; }
+  .boss-badge-banner { background:linear-gradient(135deg,#ffd54f,#ff8a65); color:#5c2e00; font-weight:bold; padding:10px; border-radius:14px; margin-top:10px; }
+
+  /* Train game */
+  .train-track { position:relative; height: 90px; margin: 10px 0; overflow:hidden; background:linear-gradient(180deg,#cfe8ff,#e8f5ff); border-radius:14px; border:2px solid #90caf9;}
+  .train-rail { position:absolute; bottom:10px; left:0; right:0; height:4px; background:#5c3a44; }
+  .train-emoji { position:absolute; bottom:14px; font-size:44px; transition: left 1s linear; transform: scaleX(-1); }
+  .train-station { position:absolute; bottom:0; right:6px; font-size:30px; }
+  .train-progress-outer { background:#ffe0ec; border-radius:10px; height:16px; overflow:hidden; margin:8px 0; border:2px solid #ff8fb3;}
+  .train-progress-inner { background:linear-gradient(90deg,#4caf50,#ffca28,#e0558a); height:100%; transition: width 0.1s linear; }
+  .train-round-line { font-size:13px; color:#a06377; margin-bottom:6px; }
+
+  /* Recap reel */
+  .recap-slide { text-align:center; }
+  .recap-emoji { font-size: 50px; }
+  .recap-title { font-size: 20px; font-weight:bold; color:#e0558a; margin: 6px 0; }
+  .recap-result { font-size: 15px; margin: 6px 0; }
+  .recap-fact { font-size: 13px; color:#a06377; margin-top: 8px; }
+  .recap-dots { display:flex; justify-content:center; gap:6px; margin: 12px 0; }
+  .recap-dots .d { width:8px; height:8px; border-radius:50%; background:#ffd3e2; }
+  .recap-dots .d.on { background:#e0558a; }
 </style>
 </head>
 <body id="bodyEl">
@@ -199,6 +244,34 @@
   </div>
 </div>
 
+<div class="screen hidden" id="dialogueScreen">
+  <h1>🎭 角色扮演 Role-play</h1>
+  <div class="sub">Read along! Tap 🔊 to hear each line, or record your own voice.</div>
+  <div class="card">
+    <div class="dialogue-line">
+      <div class="dialogue-avatar">👧</div>
+      <div class="dialogue-bubble">
+        <div class="dialogue-cn">现在几点？</div>
+        <div class="dialogue-py">Xiànzài jǐ diǎn?</div>
+        <button class="small-btn" onclick="speak('现在几点？')" style="margin-top:6px;">🔊 Listen</button>
+      </div>
+    </div>
+    <div class="dialogue-line">
+      <div class="dialogue-avatar">👦</div>
+      <div class="dialogue-bubble">
+        <div class="dialogue-cn" id="dialogueAnswerCn"></div>
+        <div class="dialogue-py" id="dialogueAnswerPy"></div>
+        <button class="small-btn" onclick="speakDialogueAnswer()" style="margin-top:6px;">🔊 Listen</button>
+      </div>
+    </div>
+    <div class="voice-row">
+      <button class="rec-btn" id="recBtn" onclick="toggleRecording()">🎤 Record my voice</button>
+      <button class="small-btn" id="playRecBtn" onclick="playRecording()" disabled>▶️ Play mine</button>
+    </div>
+  </div>
+  <button class="seal-btn" onclick="afterDialogue()">继续 Continue →</button>
+</div>
+
 <div class="screen hidden" id="factScreen">
   <div class="fact-overlay">
     <div class="fact-card">
@@ -208,6 +281,70 @@
       <button class="seal-btn" onclick="continueAfterFact()" style="margin-top:14px;">继续 Continue →</button>
     </div>
   </div>
+</div>
+
+<div class="screen hidden" id="bossIntroScreen">
+  <div class="boss-overlay">
+    <div class="boss-card">
+      <div class="boss-emoji">🐉👑</div>
+      <div class="medal-title">最终挑战! Final Challenge!</div>
+      <div class="sub">The Time Dragon Emperor challenges you to 3 rapid questions. Beat the clock to win a special badge!</div>
+      <button class="seal-btn" onclick="startBossRound()">⚔️ 开始挑战 Begin Challenge</button>
+      <button class="small-btn" onclick="skipBossRound()">跳过 Skip</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen hidden" id="bossScreen">
+  <div class="boss-overlay">
+    <div class="boss-card">
+      <div class="boss-emoji" id="bossEmojiEl">🐉👑</div>
+      <div class="boss-progress" id="bossProgress"></div>
+      <div class="boss-timer" id="bossTimer">10</div>
+      <div class="target-time" id="bossTargetCn"></div>
+      <div class="target-py" id="bossTargetPy"></div>
+      <div class="clock-wrap" style="margin:8px auto;"><svg class="clock-svg" id="bossClockSvg" viewBox="0 0 200 200"></svg></div>
+      <button class="seal-btn" onclick="checkBossClock()">✅ 检查 Check</button>
+    </div>
+  </div>
+</div>
+
+<div class="screen hidden" id="trainIntroScreen">
+  <h1>🚂 追火车 Catch the Train</h1>
+  <div class="card">
+    <div class="sub">A train is coming! Set the clock to match the time shown before it leaves the station. 3 trains to catch!</div>
+    <button class="seal-btn" onclick="startTrainGame()">🚉 开始 Start</button>
+    <button class="small-btn" onclick="skipTrainGame()">跳过 Skip</button>
+  </div>
+</div>
+
+<div class="screen hidden" id="trainScreen">
+  <h1>🚂 追火车</h1>
+  <div class="train-round-line" id="trainRoundLine"></div>
+  <div class="card">
+    <div class="train-track">
+      <div class="train-rail"></div>
+      <div class="train-station">🚉</div>
+      <div class="train-emoji" id="trainEmoji" style="left:0%;">🚂</div>
+    </div>
+    <div class="train-progress-outer"><div class="train-progress-inner" id="trainProgressBar" style="width:100%;"></div></div>
+    <div class="target-time" id="trainTargetCn"></div>
+    <div class="target-py" id="trainTargetPy"></div>
+    <div class="target-fa" id="trainTargetFa"></div>
+    <div class="clock-wrap"><svg class="clock-svg" id="trainClockSvg" viewBox="0 0 200 200"></svg></div>
+    <button class="seal-btn" onclick="checkTrainClock()">✅ 上车! Board the train!</button>
+  </div>
+</div>
+
+<div class="screen hidden" id="recapScreen">
+  <h1>🎬 回顾 Your Journey</h1>
+  <div class="card recap-slide" id="recapCard">
+    <div class="recap-emoji" id="recapEmoji"></div>
+    <div class="recap-title" id="recapTitle"></div>
+    <div class="recap-result" id="recapResult"></div>
+    <div class="recap-fact" id="recapFact"></div>
+  </div>
+  <div class="recap-dots" id="recapDots"></div>
 </div>
 
 <div class="screen hidden" id="speedIntroScreen">
@@ -224,9 +361,11 @@
   <div class="speed-timer" id="speedTimer">60</div>
   <div class="speed-score" id="speedScoreLine">Correct: 0</div>
   <div class="card stop-card" style="background:linear-gradient(135deg,#ffe082,#ff8a65);">
-    <div class="target-time" id="speedTargetTime"></div>
+    <div class="target-time" id="speedTargetCn"></div>
     <div class="target-py" id="speedTargetPy"></div>
+    <div class="target-fa" id="speedTargetFa"></div>
     <div class="clock-wrap"><svg class="clock-svg" id="speedClockSvg" viewBox="0 0 200 200"></svg></div>
+    <button class="small-btn" onclick="speakSpeedTarget()">🔊 听发音 Listen</button>
     <button class="seal-btn" onclick="checkSpeedClock()">✅ 检查 Check</button>
   </div>
 </div>
@@ -271,6 +410,33 @@ const SKY_ICONS = {
   evening: { icon: "🌙✨", left: "70%", top: "10px" }
 };
 
+const CN_HOUR_WORDS = {1:"一",2:"二",3:"三",4:"四",5:"五",6:"六",7:"七",8:"八",9:"九",10:"十",11:"十一",12:"十二"};
+const CN_DIGITS = ["零","一","二","三","四","五","六","七","八","九"];
+function cnNumberFull(n) {
+  if (n === 0) return "零";
+  if (n < 10) return CN_DIGITS[n];
+  if (n < 20) return "十" + (n === 10 ? "" : CN_DIGITS[n-10]);
+  const tens = Math.floor(n/10), ones = n%10;
+  return CN_DIGITS[tens] + "十" + (ones === 0 ? "" : CN_DIGITS[ones]);
+}
+const FA_WORDS = {0:"صفر",1:"یک",2:"دو",3:"سه",4:"چهار",5:"پنج",6:"شش",7:"هفت",8:"هشت",9:"نه",
+  10:"ده",11:"یازده",12:"دوازده",13:"سیزده",14:"چهارده",15:"پانزده",16:"شانزده",17:"هفده",
+  18:"هجده",19:"نوزده",20:"بیست",25:"بیست و پنج",30:"سی",35:"سی و پنج",40:"چهل",45:"چهل و پنج",
+  50:"پنجاه",55:"پنجاه و پنج"};
+function faNumber(n) {
+  if (FA_WORDS[n] !== undefined) return FA_WORDS[n];
+  const tens = Math.floor(n/10)*10, ones = n%10;
+  if (ones === 0) return FA_WORDS[tens] || String(tens);
+  return (FA_WORDS[tens] || String(tens)) + " و " + FA_WORDS[ones];
+}
+function buildTimePhrase(h, m) {
+  let cn, py, fa;
+  if (m === 0) { cn = CN_HOUR_WORDS[h] + "点整"; py = "diǎn zhěng"; fa = "ساعت " + faNumber(h); }
+  else if (m === 30) { cn = CN_HOUR_WORDS[h] + "点半"; py = "diǎn bàn"; fa = "ساعت " + faNumber(h) + " و نیم"; }
+  else { cn = CN_HOUR_WORDS[h] + "点" + cnNumberFull(m) + "分"; py = "diǎn fēn"; fa = "ساعت " + faNumber(h) + " و " + faNumber(m) + " دقیقه"; }
+  return { cn, py, fa, full: "现在是" + cn };
+}
+
 function fetchWithTimeout(url, options = {}, timeoutMs = 6000) {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
@@ -283,11 +449,11 @@ async function getStore() {
   } catch (e) { console.error(e); }
   return {};
 }
-async function saveResult(name, sc, total, streakVal, answers) {
+async function saveResult(name, sc, total, streakVal, answers, bonus, boss) {
   try {
     const data = await getStore();
     if (!data.adventureResults) data.adventureResults = {};
-    data.adventureResults[name] = { score: sc, total: total, bestStreak: streakVal, time: Date.now(), answers: answers };
+    data.adventureResults[name] = { score: sc, total: total, bestStreak: streakVal, bonus: bonus||0, bossWon: !!boss, time: Date.now(), answers: answers };
     await fetchWithTimeout(NPOINT_URL, {
       method: "POST", headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
@@ -299,7 +465,9 @@ function speak(text) {
   try {
     window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = 'zh-CN'; u.rate = 0.85;
+    u.lang = 'zh-CN';
+    u.rate = 0.6;   // slower pace for beginners
+    u.pitch = 0.9;  // slightly lower, calmer pitch
     window.speechSynthesis.speak(u);
   } catch (e) { console.error(e); }
 }
@@ -482,7 +650,30 @@ function checkClock() {
   }
   renderStickerTray();
 
-  setTimeout(() => { showFact(s); }, 1200);
+  setTimeout(() => {
+    if (isCorrect) { showDialogue(s); } else { showFact(s); }
+  }, 1200);
+}
+
+let currentDialogueStop = null;
+
+function showDialogue(s) {
+  currentDialogueStop = s;
+  document.getElementById('adventureScreen').classList.add('hidden');
+  document.getElementById('dialogueScreen').classList.remove('hidden');
+  document.getElementById('dialogueAnswerCn').textContent = s.cn;
+  document.getElementById('dialogueAnswerPy').textContent = s.pinyin_suffix;
+  document.getElementById('playRecBtn').disabled = true;
+  recordedBlobUrl = null;
+}
+
+function speakDialogueAnswer() {
+  if (currentDialogueStop) speak(currentDialogueStop.full_sentence);
+}
+
+function afterDialogue() {
+  document.getElementById('dialogueScreen').classList.add('hidden');
+  showFact(currentDialogueStop);
 }
 
 function showFact(s) {
@@ -500,7 +691,7 @@ function continueAfterFact() {
     document.getElementById('adventureScreen').classList.remove('hidden');
     renderStop();
   } else {
-    document.getElementById('speedIntroScreen').classList.remove('hidden');
+    document.getElementById('trainIntroScreen').classList.remove('hidden');
   }
 }
 
@@ -508,7 +699,11 @@ let speedBonus = 0;
 
 function skipSpeedRound() {
   document.getElementById('speedIntroScreen').classList.add('hidden');
-  finishAdventure();
+  proceedToBoss();
+}
+
+function proceedToBoss() {
+  document.getElementById('bossIntroScreen').classList.remove('hidden');
 }
 
 let speedTimeLeft = 60;
@@ -517,13 +712,17 @@ let speedTargetH = 0, speedTargetM = 0;
 let speedHandAngleHour = 0, speedHandAngleMinute = 0;
 let speedDraggingHand = null;
 
+const SPEED_ROUND_MAX_QUESTIONS = 5;
+let speedQuestionCount = 0;
+
 function startSpeedRound() {
   document.getElementById('speedIntroScreen').classList.add('hidden');
   document.getElementById('speedScreen').classList.remove('hidden');
   speedTimeLeft = 60;
   speedBonus = 0;
+  speedQuestionCount = 0;
   document.getElementById('speedTimer').textContent = speedTimeLeft;
-  document.getElementById('speedScoreLine').textContent = 'Correct: 0';
+  document.getElementById('speedScoreLine').textContent = `Question 1 / ${SPEED_ROUND_MAX_QUESTIONS} — Correct: 0`;
   newSpeedTarget();
   speedTimerInterval = setInterval(() => {
     speedTimeLeft--;
@@ -531,20 +730,28 @@ function startSpeedRound() {
     if (speedTimeLeft <= 0) {
       clearInterval(speedTimerInterval);
       document.getElementById('speedScreen').classList.add('hidden');
-      finishAdventure();
+      proceedToBoss();
     }
   }, 1000);
 }
 
+let speedCurrentPhrase = null;
+
 function newSpeedTarget() {
   speedTargetH = Math.floor(Math.random()*12)+1;
   speedTargetM = [0,5,10,15,20,25,30,35,40,45,50,55][Math.floor(Math.random()*12)];
-  document.getElementById('speedTargetTime').textContent = `${speedTargetH}:${String(speedTargetM).padStart(2,'0')}`;
-  document.getElementById('speedTargetPy').textContent = 'Set the clock!';
+  speedCurrentPhrase = buildTimePhrase(speedTargetH, speedTargetM);
+  document.getElementById('speedTargetCn').textContent = speedCurrentPhrase.cn;
+  document.getElementById('speedTargetPy').textContent = speedCurrentPhrase.py;
+  document.getElementById('speedTargetFa').textContent = speedCurrentPhrase.fa;
   speedHandAngleHour = Math.random()*360;
   speedHandAngleMinute = Math.random()*360;
   drawSpeedClock();
   setupSpeedDragHandlers();
+}
+
+function speakSpeedTarget() {
+  if (speedCurrentPhrase) speak(speedCurrentPhrase.full);
 }
 
 function drawSpeedClock() {
@@ -592,14 +799,23 @@ function checkSpeedClock() {
   const { h, m } = angleToHourMinute(speedHandAngleHour, speedHandAngleMinute);
   const isCorrect = (h === speedTargetH || h === (speedTargetH%12)) && m === speedTargetM;
   if (isCorrect) { speedBonus++; playCorrectSound(); } else { playWrongSound(); }
-  document.getElementById('speedScoreLine').textContent = `Correct: ${speedBonus}`;
+  speedQuestionCount++;
+  if (speedQuestionCount >= SPEED_ROUND_MAX_QUESTIONS) {
+    clearInterval(speedTimerInterval);
+    document.getElementById('speedScreen').classList.add('hidden');
+    proceedToBoss();
+    return;
+  }
+  document.getElementById('speedScoreLine').textContent = `Question ${speedQuestionCount+1} / ${SPEED_ROUND_MAX_QUESTIONS} — Correct: ${speedBonus}`;
   newSpeedTarget();
 }
 
-function finishAdventure() {
+function renderFinalScoreUI() {
   document.getElementById('adventureScreen').classList.add('hidden');
   document.getElementById('speedIntroScreen').classList.add('hidden');
   document.getElementById('speedScreen').classList.add('hidden');
+  document.getElementById('bossIntroScreen').classList.add('hidden');
+  document.getElementById('bossScreen').classList.add('hidden');
   document.getElementById('scoreScreen').classList.remove('hidden');
   document.getElementById('bodyEl').style.background = '';
 
@@ -611,12 +827,12 @@ function finishAdventure() {
   else if (pct >= 0.5) { emoji='🥉'; title='Bronze Medal!'; sub='Good effort, keep practicing!'; }
   else { emoji='⭐'; title='Nice Try!'; sub='Practice makes perfect!'; }
 
-  document.getElementById('medalEmoji').textContent = emoji;
-  document.getElementById('medalTitle').textContent = title;
-  document.getElementById('medalSub').textContent = `${sub} Score: ${correctCount}/${total} · Best streak: ${bestStreak}` + (speedBonus>0 ? ` · Bonus: ${speedBonus}` : '');
+  document.getElementById('medalEmoji').textContent = emoji + (bossWon ? ' 👑' : '');
+  document.getElementById('medalTitle').textContent = title + (bossWon ? ' + Boss Defeated!' : '');
+  document.getElementById('medalSub').textContent = `${sub} Score: ${correctCount}/${total} · Best streak: ${bestStreak}` + (speedBonus>0 ? ` · Bonus: ${speedBonus}` : '') + (bossWon ? ' · 👑 Dragon Emperor Badge earned!' : '');
 
-  drawCertificate(emoji, title, correctCount, total, bestStreak, speedBonus);
-  saveResult(myName, correctCount, total, bestStreak, myAnswers, speedBonus);
+  drawCertificate(emoji + (bossWon?' 👑':''), title + (bossWon?' + Boss Defeated!':''), correctCount, total, bestStreak, speedBonus);
+  saveResult(myName, correctCount, total, bestStreak, myAnswers, speedBonus, bossWon);
   refreshLeaderboard();
 }
 
@@ -707,6 +923,338 @@ function toggleDetail(safeId) {
   }
   el.classList.remove('hidden');
 }
+
+// ---------- Catch the Train ----------
+let trainRoundIndex = 0;
+let trainQuestions = [];
+let trainCorrectCount = 0;
+let trainTimeLeft = 0;
+let trainTimerInterval = null;
+let trainHandAngleHour = 0, trainHandAngleMinute = 0;
+let trainDraggingHand = null;
+const TRAIN_ROUND_SECONDS = 8;
+
+function skipTrainGame() {
+  document.getElementById('trainIntroScreen').classList.add('hidden');
+  document.getElementById('speedIntroScreen').classList.remove('hidden');
+}
+
+function startTrainGame() {
+  document.getElementById('trainIntroScreen').classList.add('hidden');
+  document.getElementById('trainScreen').classList.remove('hidden');
+  trainRoundIndex = 0;
+  trainCorrectCount = 0;
+  trainQuestions = [];
+  for (let i = 0; i < 3; i++) {
+    const h = Math.floor(Math.random()*12)+1;
+    const m = [0,15,30,45][Math.floor(Math.random()*4)];
+    trainQuestions.push({ h, m, phrase: buildTimePhrase(h,m) });
+  }
+  loadTrainRound();
+}
+
+function loadTrainRound() {
+  if (trainRoundIndex >= trainQuestions.length) { endTrainGame(); return; }
+  const q = trainQuestions[trainRoundIndex];
+  document.getElementById('trainRoundLine').textContent = `Train ${trainRoundIndex+1} / ${trainQuestions.length} — Correct so far: ${trainCorrectCount}`;
+  document.getElementById('trainTargetCn').textContent = q.phrase.cn;
+  document.getElementById('trainTargetPy').textContent = q.phrase.py;
+  document.getElementById('trainTargetFa').textContent = q.phrase.fa;
+  trainHandAngleHour = Math.random()*360;
+  trainHandAngleMinute = Math.random()*360;
+  drawTrainClock();
+  setupTrainDragHandlers();
+  document.getElementById('trainEmoji').style.left = '0%';
+  document.getElementById('trainProgressBar').style.width = '100%';
+
+  trainTimeLeft = TRAIN_ROUND_SECONDS * 10; // tenths of a second
+  if (trainTimerInterval) clearInterval(trainTimerInterval);
+  trainTimerInterval = setInterval(() => {
+    trainTimeLeft--;
+    const pct = Math.max(0, (trainTimeLeft / (TRAIN_ROUND_SECONDS*10)) * 100);
+    document.getElementById('trainProgressBar').style.width = pct + '%';
+    document.getElementById('trainEmoji').style.left = (100 - pct) + '%';
+    if (trainTimeLeft <= 0) {
+      clearInterval(trainTimerInterval);
+      playWrongSound();
+      trainRoundIndex++;
+      loadTrainRound();
+    }
+  }, 100);
+}
+
+function drawTrainClock() {
+  const svg = document.getElementById('trainClockSvg');
+  const hx = 100 + 45*Math.sin(trainHandAngleHour*Math.PI/180);
+  const hy = 100 - 45*Math.cos(trainHandAngleHour*Math.PI/180);
+  const mx = 100 + 75*Math.sin(trainHandAngleMinute*Math.PI/180);
+  const my = 100 - 75*Math.cos(trainHandAngleMinute*Math.PI/180);
+  svg.innerHTML = `
+    <circle cx="100" cy="100" r="95" fill="#fffafc" stroke="#42a5f5" stroke-width="6"/>
+    ${[...Array(12)].map((_,i) => {
+      const a = i*30 * Math.PI/180;
+      const x1 = 100 + 80*Math.sin(a), y1 = 100 - 80*Math.cos(a);
+      const x2 = 100 + 88*Math.sin(a), y2 = 100 - 88*Math.cos(a);
+      return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#1565c0" stroke-width="3"/>`;
+    }).join('')}
+    <line class="hand" data-hand="hour" x1="100" y1="100" x2="${hx}" y2="${hy}" stroke="#5c3a44" stroke-width="7" stroke-linecap="round"/>
+    <line class="hand" data-hand="minute" x1="100" y1="100" x2="${mx}" y2="${my}" stroke="#ff6b9d" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="100" cy="100" r="6" fill="#1565c0"/>
+  `;
+}
+
+function setupTrainDragHandlers() {
+  const svg = document.getElementById('trainClockSvg');
+  svg.onpointerdown = (e) => {
+    const t = e.target.closest('[data-hand]');
+    if (!t) return;
+    trainDraggingHand = t.getAttribute('data-hand');
+    svg.setPointerCapture(e.pointerId);
+  };
+  svg.onpointermove = (e) => {
+    if (!trainDraggingHand) return;
+    const rect = svg.getBoundingClientRect();
+    const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+    let angle = Math.atan2(e.clientX-cx, -(e.clientY-cy)) * 180/Math.PI;
+    if (angle < 0) angle += 360;
+    if (trainDraggingHand === 'hour') trainHandAngleHour = angle; else trainHandAngleMinute = angle;
+    drawTrainClock(); setupTrainDragHandlers();
+  };
+  svg.onpointerup = () => { trainDraggingHand = null; };
+  svg.onpointerleave = () => { trainDraggingHand = null; };
+}
+
+function checkTrainClock() {
+  const q = trainQuestions[trainRoundIndex];
+  const { h, m } = angleToHourMinute(trainHandAngleHour, trainHandAngleMinute);
+  const isCorrect = (h === q.h || h === (q.h%12)) && m === q.m;
+  if (isCorrect) {
+    clearInterval(trainTimerInterval);
+    playCorrectSound();
+    trainCorrectCount++;
+    trainRoundIndex++;
+    loadTrainRound();
+  } else {
+    playWrongSound();
+    // no penalty besides the bar continuing to shrink - let them try again
+  }
+}
+
+function endTrainGame() {
+  if (trainTimerInterval) clearInterval(trainTimerInterval);
+  document.getElementById('trainScreen').classList.add('hidden');
+  document.getElementById('speedIntroScreen').classList.remove('hidden');
+}
+
+// ---------- Recap reel ----------
+let recapIndex = 0;
+let recapTimer = null;
+
+function playRecapReel() {
+  document.getElementById('scoreScreen').classList.add('hidden');
+  document.getElementById('recapScreen').classList.remove('hidden');
+  recapIndex = 0;
+  renderRecapSlide();
+  if (recapTimer) clearInterval(recapTimer);
+  recapTimer = setInterval(() => {
+    recapIndex++;
+    if (recapIndex >= STOPS.length) {
+      clearInterval(recapTimer);
+      document.getElementById('recapScreen').classList.add('hidden');
+      renderFinalScoreUI();
+      return;
+    }
+    renderRecapSlide();
+  }, 3000);
+}
+
+function renderRecapSlide() {
+  const s = STOPS[recapIndex];
+  const ans = myAnswers.find(a => a.stop === s.title_en);
+  document.getElementById('recapEmoji').textContent = s.emoji;
+  document.getElementById('recapTitle').textContent = `${s.title_cn} ${s.title_en}`;
+  if (ans) {
+    document.getElementById('recapResult').innerHTML = ans.isCorrect
+      ? `✅ You set it to ${ans.given} — correct!`
+      : `You set ${ans.given} (target was ${ans.target})`;
+  } else {
+    document.getElementById('recapResult').textContent = '';
+  }
+  document.getElementById('recapFact').textContent = s.fact_en;
+  const dots = document.getElementById('recapDots');
+  dots.innerHTML = STOPS.map((_,i) => `<div class="d ${i===recapIndex?'on':''}"></div>`).join('');
+}
+
+// ---------- Voice recording ----------
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordedBlobUrl = null;
+let isRecording = false;
+
+async function toggleRecording() {
+  const btn = document.getElementById('recBtn');
+  if (isRecording) {
+    mediaRecorder.stop();
+    isRecording = false;
+    btn.textContent = '🎤 Record my voice';
+    btn.classList.remove('recording');
+    return;
+  }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    recordedChunks = [];
+    mediaRecorder = new MediaRecorder(stream);
+    mediaRecorder.ondataavailable = (e) => { if (e.data.size > 0) recordedChunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(recordedChunks, { type: 'audio/webm' });
+      recordedBlobUrl = URL.createObjectURL(blob);
+      document.getElementById('playRecBtn').disabled = false;
+      stream.getTracks().forEach(t => t.stop());
+    };
+    mediaRecorder.start();
+    isRecording = true;
+    btn.textContent = '⏹ Stop recording';
+    btn.classList.add('recording');
+  } catch (e) {
+    alert('Microphone access is needed to record your voice. Please allow microphone permission and try again.');
+    console.error(e);
+  }
+}
+
+function playRecording() {
+  if (recordedBlobUrl) {
+    const audio = new Audio(recordedBlobUrl);
+    audio.play();
+  }
+}
+
+// ---------- Boss round ----------
+let bossWon = false;
+let bossQuestions = [];
+let bossQIndex = 0;
+let bossTimeLeft = 10;
+let bossTimerInterval = null;
+let bossHandAngleHour = 0, bossHandAngleMinute = 0;
+let bossDraggingHand = null;
+
+function skipBossRound() {
+  document.getElementById('bossIntroScreen').classList.add('hidden');
+  playRecapReel();
+}
+
+function startBossRound() {
+  document.getElementById('bossIntroScreen').classList.add('hidden');
+  document.getElementById('bossScreen').classList.remove('hidden');
+  bossWon = false;
+  bossQIndex = 0;
+  bossQuestions = [];
+  for (let i = 0; i < 3; i++) {
+    const h = Math.floor(Math.random()*12)+1;
+    const m = [0,15,30,45][Math.floor(Math.random()*4)];
+    bossQuestions.push({ h, m, phrase: buildTimePhrase(h,m) });
+  }
+  renderBossProgress();
+  loadBossQuestion();
+}
+
+function renderBossProgress(failedAt) {
+  const el = document.getElementById('bossProgress');
+  el.innerHTML = bossQuestions.map((_,i) => {
+    let cls = 'boss-dot';
+    if (failedAt === i) cls += ' failed';
+    else if (i < bossQIndex) cls += ' done';
+    return `<div class="${cls}"></div>`;
+  }).join('');
+}
+
+function loadBossQuestion() {
+  if (bossQIndex >= bossQuestions.length) { bossWon = true; endBossRound(); return; }
+  const q = bossQuestions[bossQIndex];
+  document.getElementById('bossTargetCn').textContent = q.phrase.cn;
+  document.getElementById('bossTargetPy').textContent = q.phrase.py;
+  bossHandAngleHour = Math.random()*360;
+  bossHandAngleMinute = Math.random()*360;
+  drawBossClock();
+  setupBossDragHandlers();
+  bossTimeLeft = 10;
+  document.getElementById('bossTimer').textContent = bossTimeLeft;
+  if (bossTimerInterval) clearInterval(bossTimerInterval);
+  bossTimerInterval = setInterval(() => {
+    bossTimeLeft--;
+    document.getElementById('bossTimer').textContent = bossTimeLeft;
+    if (bossTimeLeft <= 0) {
+      clearInterval(bossTimerInterval);
+      renderBossProgress(bossQIndex);
+      playWrongSound();
+      endBossRound();
+    }
+  }, 1000);
+}
+
+function drawBossClock() {
+  const svg = document.getElementById('bossClockSvg');
+  const hx = 100 + 45*Math.sin(bossHandAngleHour*Math.PI/180);
+  const hy = 100 - 45*Math.cos(bossHandAngleHour*Math.PI/180);
+  const mx = 100 + 75*Math.sin(bossHandAngleMinute*Math.PI/180);
+  const my = 100 - 75*Math.cos(bossHandAngleMinute*Math.PI/180);
+  svg.innerHTML = `
+    <circle cx="100" cy="100" r="95" fill="#fffafc" stroke="#a13327" stroke-width="6"/>
+    ${[...Array(12)].map((_,i) => {
+      const a = i*30 * Math.PI/180;
+      const x1 = 100 + 80*Math.sin(a), y1 = 100 - 80*Math.cos(a);
+      const x2 = 100 + 88*Math.sin(a), y2 = 100 - 88*Math.cos(a);
+      return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="#a13327" stroke-width="3"/>`;
+    }).join('')}
+    <line class="hand" data-hand="hour" x1="100" y1="100" x2="${hx}" y2="${hy}" stroke="#5c3a44" stroke-width="7" stroke-linecap="round"/>
+    <line class="hand" data-hand="minute" x1="100" y1="100" x2="${mx}" y2="${my}" stroke="#ff6b9d" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="100" cy="100" r="6" fill="#a13327"/>
+  `;
+}
+
+function setupBossDragHandlers() {
+  const svg = document.getElementById('bossClockSvg');
+  svg.onpointerdown = (e) => {
+    const t = e.target.closest('[data-hand]');
+    if (!t) return;
+    bossDraggingHand = t.getAttribute('data-hand');
+    svg.setPointerCapture(e.pointerId);
+  };
+  svg.onpointermove = (e) => {
+    if (!bossDraggingHand) return;
+    const rect = svg.getBoundingClientRect();
+    const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+    let angle = Math.atan2(e.clientX-cx, -(e.clientY-cy)) * 180/Math.PI;
+    if (angle < 0) angle += 360;
+    if (bossDraggingHand === 'hour') bossHandAngleHour = angle; else bossHandAngleMinute = angle;
+    drawBossClock(); setupBossDragHandlers();
+  };
+  svg.onpointerup = () => { bossDraggingHand = null; };
+  svg.onpointerleave = () => { bossDraggingHand = null; };
+}
+
+function checkBossClock() {
+  const q = bossQuestions[bossQIndex];
+  const { h, m } = angleToHourMinute(bossHandAngleHour, bossHandAngleMinute);
+  const isCorrect = (h === q.h || h === (q.h%12)) && m === q.m;
+  if (isCorrect) {
+    playCorrectSound();
+    clearInterval(bossTimerInterval);
+    bossQIndex++;
+    renderBossProgress();
+    loadBossQuestion();
+  } else {
+    playWrongSound();
+    // let them try again within the same timer - no penalty beyond the clock ticking
+  }
+}
+
+function endBossRound() {
+  if (bossTimerInterval) clearInterval(bossTimerInterval);
+  document.getElementById('bossScreen').classList.add('hidden');
+  playRecapReel();
+}
+
+const OLD_MARKER = null;
 </script>
 </body>
 </html>
